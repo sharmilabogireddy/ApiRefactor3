@@ -1,4 +1,5 @@
-﻿using ApiRefactor.Data.Contexts;
+﻿using ApiRefactor.Common;
+using ApiRefactor.Data.Contexts;
 using ApiRefactor.Models;
 using ApiRefactor.Repositories.Interfaces;
 using Microsoft.Data.Sqlite;
@@ -25,18 +26,62 @@ namespace ApiRefactor.Repositories
             return await _repositoryContext.Waves.FindAsync(id);
         }
 
-        public async Task SaveAsync(Wave wave)
+        public async Task<Wave> SaveAsync(Wave wave)
         {
-            await _repositoryContext.Waves.AddAsync(wave);
+            var waveToAdd = await ValidateRequestData(wave);
 
-            // Save changes to the database
+            var result = await _repositoryContext.Waves.AddAsync(waveToAdd);
+
             await _repositoryContext.SaveChangesAsync();
+
+            return result.Entity;
         }
 
-        public async Task UpdateAsync(Wave wave)
+        public async Task<Wave> UpdateAsync(Wave wave)
         {
-            _repositoryContext.Waves.Update(wave);
+            var recordToUpdate = await UpdateValidateRequestData(wave);
+
+            var result =_repositoryContext.Waves.Update(recordToUpdate);
+
             await _repositoryContext.SaveChangesAsync();
+
+            return result.Entity;
+        }
+
+
+        private async Task<Wave> ValidateRequestData(Wave wave)
+        {
+            if (string.IsNullOrEmpty(wave.Name))
+            {
+                throw new System.ComponentModel.DataAnnotations.ValidationException(ConstantStrings.NAME_INVALID);
+            }
+
+            return new Wave
+            {
+                Id = Guid.NewGuid(),
+                Name = wave.Name,
+                WaveDate = DateTime.UtcNow
+            };
+        }
+
+        private async Task<Wave> UpdateValidateRequestData(Wave wave)
+        {
+            if (wave == null || wave.Id == Guid.Empty)
+                throw new ArgumentException(ConstantStrings.INVALID_REQUEST_DATA);
+
+            var recordFound = await _repositoryContext.Waves.FindAsync(wave.Id);
+            if (recordFound == null)
+                throw new KeyNotFoundException($"Wave with ID {wave.Id} not found.");
+
+            if (string.IsNullOrEmpty(wave.Name))
+            {
+                throw new System.ComponentModel.DataAnnotations.ValidationException(ConstantStrings.NAME_INVALID);
+            }
+
+            recordFound.Name = wave.Name;
+            recordFound.WaveDate = DateTime.UtcNow;
+
+            return recordFound;
         }
     }
 }

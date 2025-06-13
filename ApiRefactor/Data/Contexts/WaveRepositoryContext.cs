@@ -13,7 +13,7 @@ namespace ApiRefactor.Data.Contexts
     : base(options)
         {
         }
-        public DbSet<Wave> Waves { get; set; }
+        public virtual DbSet<Wave> Waves { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

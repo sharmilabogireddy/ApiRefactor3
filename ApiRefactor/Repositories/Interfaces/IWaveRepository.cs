@@ -6,7 +6,7 @@ namespace ApiRefactor.Repositories.Interfaces
     {
         Task<List<Wave>> GetAllAsync();
         Task<Wave?> GetByIdAsync(Guid id);
-        Task SaveAsync(Wave wave);
-        Task UpdateAsync(Wave wave);
+        Task<Wave> SaveAsync(Wave wave);
+        Task<Wave> UpdateAsync(Wave wave);
     }
 }

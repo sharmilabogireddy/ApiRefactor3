@@ -33,39 +33,33 @@ namespace ApiRefactor.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> Save([FromBody] CreateWave wave)
+        public async Task<ActionResult<Wave>> Save([FromBody] CreateWave wave)
         {
-            if (wave == null)
-                return BadRequest("Wave object is null.");
 
             var newWave = new Wave
             {
-                Id = Guid.NewGuid(),
                 Name = wave.Name,
-                WaveDate = DateTime.UtcNow
             };
 
-            await _repository.SaveAsync(newWave);
+            var result = await _repository.SaveAsync(newWave);
 
-            return CreatedAtAction(nameof(GetById), new { id = newWave.Id }, newWave);
+            return Ok(result);
+
         }
 
         [HttpPut]
-        public async Task<ActionResult> Update([FromBody] UpdateWave wave)
+        public async Task<ActionResult<Wave>> Update([FromBody] UpdateWave wave)
         {
-            if (wave == null || wave.Id == Guid.Empty)
-                return BadRequest("Invalid wave data.");
+           
+           var updateWave = new Wave { 
+               Id = wave.Id,
+               Name = wave.Name,
+               WaveDate = DateTime.Now
+           };
 
-            var existingWave = await _repository.GetByIdAsync(wave.Id);
-            if (existingWave == null)
-                return NotFound($"Wave with ID {wave.Id} not found.");
+            await _repository.UpdateAsync(updateWave);
 
-            existingWave.Name = wave.Name;
-            //existingWave.WaveDate = wave.WaveDate;
-
-            await _repository.UpdateAsync(existingWave);
-
-            return Ok(existingWave);
+            return Ok(updateWave);
         }
     }
 }
