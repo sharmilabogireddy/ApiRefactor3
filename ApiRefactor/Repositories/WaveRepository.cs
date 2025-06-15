@@ -39,7 +39,7 @@ namespace ApiRefactor.Repositories
 
         public async Task<Wave> UpdateAsync(Wave wave)
         {
-            var recordToUpdate = await UpdateValidateRequestData(wave);
+            var recordToUpdate = await ValidateRequestData(wave);
 
             var result =_repositoryContext.Waves.Update(recordToUpdate);
 
@@ -48,40 +48,36 @@ namespace ApiRefactor.Repositories
             return result.Entity;
         }
 
-
         private async Task<Wave> ValidateRequestData(Wave wave)
         {
-            if (string.IsNullOrEmpty(wave.Name))
+            if (wave == null || string.IsNullOrEmpty(wave.Name))
             {
                 throw new System.ComponentModel.DataAnnotations.ValidationException(ConstantStrings.NAME_INVALID);
             }
 
-            return new Wave
+            if (wave.Id == Guid.Empty)
             {
-                Id = Guid.NewGuid(),
-                Name = wave.Name,
-                WaveDate = DateTime.UtcNow
-            };
-        }
+                // Create scenario
+                return new Wave
+                {
+                    Id = Guid.NewGuid(),
+                    Name = wave.Name,
+                    WaveDate = DateTime.UtcNow
+                };
+            }
 
-        private async Task<Wave> UpdateValidateRequestData(Wave wave)
-        {
-            if (wave == null || wave.Id == Guid.Empty)
-                throw new ArgumentException(ConstantStrings.INVALID_REQUEST_DATA);
-
-            var recordFound = await _repositoryContext.Waves.FindAsync(wave.Id);
-            if (recordFound == null)
+            // Update scenario
+            var existing = await _repositoryContext.Waves.FindAsync(wave.Id);
+            if (existing == null)
+            {
                 throw new KeyNotFoundException($"Wave with ID {wave.Id} not found.");
-
-            if (string.IsNullOrEmpty(wave.Name))
-            {
-                throw new System.ComponentModel.DataAnnotations.ValidationException(ConstantStrings.NAME_INVALID);
             }
 
-            recordFound.Name = wave.Name;
-            recordFound.WaveDate = DateTime.UtcNow;
+            existing.Name = wave.Name;
+            existing.WaveDate = DateTime.UtcNow;
 
-            return recordFound;
+            return existing;
         }
+        
     }
 }

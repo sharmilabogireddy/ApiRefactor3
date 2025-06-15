@@ -1,13 +1,14 @@
 using ApiRefactor.Models;
 using ApiRefactor.Repositories;
 using ApiRefactor.Repositories.Interfaces;
-using ApiRefactor.Test.Common;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using System.Linq.Expressions;
 using System.Reflection.Emit;
 using ApiRefactor.Data.Contexts;
+using FluentAssertions;
+using System.ComponentModel.DataAnnotations;
 
 namespace ApiRefactor.Test
 {
@@ -25,99 +26,112 @@ namespace ApiRefactor.Test
         [Fact]
         public async Task SaveAsync_Should_Add_Wave_And_Return_Entity()
         {
-
+            //Arrange
             using var context = CreateInMemoryContext();
             var repo = new WaveRepository(context);
-
             var wave = new Wave { Name = "Wave A" };
 
+            //Act
             var result = await repo.SaveAsync(wave);
 
-            Assert.NotNull(result);
-            Assert.Equal("Wave A", result.Name);
-            Assert.NotEqual(Guid.Empty, result.Id);
+            // Assert
+            result.Should().NotBeNull();
+            result.Name.Should().Be("Wave A");
+            result.Id.Should().NotBe(Guid.Empty);
         }
 
         [Fact]
-        public async Task SaveAsync_Should_Throw_When_Name_Is_Empty()
+        public async Task SaveAsync_WhenNameIsEmpty_ShouldThrowValidationException()
         {
+            //Arrange
             using var context = CreateInMemoryContext();
             var repo = new WaveRepository(context);
-
             var wave = new Wave { Name = "" };
 
-            await Assert.ThrowsAsync<System.ComponentModel.DataAnnotations.ValidationException>(() =>
-                repo.SaveAsync(wave));
+            // Act
+            Func<Task> act = () => repo.SaveAsync(wave);
+
+            //Assert
+            await act.Should()
+                .ThrowAsync<ValidationException>()
+                .WithMessage("*name*");
         }
 
         [Fact]
-        public async Task UpdateAsync_Should_Update_Wave()
+        public async Task UpdateAsync_WhenWaveIsValid_ShouldUpdateAndReturnWave()
         {
+            // Arrange
             using var context = CreateInMemoryContext();
             var repo = new WaveRepository(context);
+            var original = await repo.SaveAsync(new Wave { Name = "Original" });
 
-            var wave = new Wave { Name = "Original" };
-            var saved = await repo.SaveAsync(wave);
+            // Act
+            original.Name = "Updated";
+            var result = await repo.UpdateAsync(original);
 
-            saved.Name = "Updated";
-            var updated = await repo.UpdateAsync(saved);
-
-            Assert.Equal("Updated", updated.Name);
+            // Assert
+            result.Name.Should().Be("Updated");
         }
 
         [Fact]
-        public async Task UpdateAsync_Should_Throw_When_Id_Empty()
+        public async Task UpdateAsync_WhenIdIsEmpty_ShouldThrowArgumentException()
         {
+            //Arrange
             using var context = CreateInMemoryContext();
             var repo = new WaveRepository(context);
-
             var wave = new Wave { Id = Guid.Empty, Name = "Invalid" };
 
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => repo.UpdateAsync(wave));
-            Assert.Contains("not valid", ex.Message, StringComparison.OrdinalIgnoreCase);
+            //Act
+            Func<Task> act = () => repo.UpdateAsync(wave);
+
+
+            // Assert
+            await act.Should()
+                .ThrowAsync<ArgumentException>()
+                .WithMessage("*not valid*");
         }
 
         [Fact]
-        public async Task UpdateAsync_Should_Throw_When_Wave_Not_Found()
+        public async Task UpdateAsync_WhenWaveNotFound_ShouldThrowKeyNotFoundException()
         {
+            //Arrange
             using var context = CreateInMemoryContext();
             var repo = new WaveRepository(context);
-
             var wave = new Wave
             {
                 Id = Guid.NewGuid(), // Not in DB
                 Name = "Valid Name"
             };
 
-            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() => repo.UpdateAsync(wave));
-            Assert.Contains("not found", ex.Message, StringComparison.OrdinalIgnoreCase);
+            //Act
+            Func<Task> act = () => repo.UpdateAsync(wave);
+
+            // Assert
+            await act.Should()
+                .ThrowAsync<KeyNotFoundException>()
+                .WithMessage("*not found*");
         }
 
         [Fact]
-        public async Task UpdateAsync_Should_Throw_When_Name_Is_Empty()
+        public async Task UpdateAsync_WhenNameIsEmpty_ShouldThrowValidationException()
         {
+            // Arrange
             using var context = CreateInMemoryContext();
+            var repository = new WaveRepository(context);
 
-            var existingWave = new Wave
-            {
-                Id = Guid.NewGuid(),
-                Name = "Original"
-            };
+            var existingWave = new Wave { Name = "Before" };
             context.Waves.Add(existingWave);
             await context.SaveChangesAsync();
 
-            var repo = new WaveRepository(context);
+            var invalidUpdate = new Wave { Id = existingWave.Id, Name = "" };
 
-            var updatedWave = new Wave
-            {
-                Id = existingWave.Id,
-                Name = "" // Invalid name
-            };
+            // Act
+            Func<Task> act = () => repository.UpdateAsync(invalidUpdate);
 
-            var ex = await Assert.ThrowsAsync<System.ComponentModel.DataAnnotations.ValidationException>(() =>
-                repo.UpdateAsync(updatedWave));
-
-            Assert.Contains("name", ex.Message, StringComparison.OrdinalIgnoreCase);
+            // Assert
+            await act.Should()
+                .ThrowAsync<ValidationException>()
+                .WithMessage("*name*");
         }
     }
 }
