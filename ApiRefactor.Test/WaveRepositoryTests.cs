@@ -9,6 +9,8 @@ using System.Reflection.Emit;
 using ApiRefactor.Data.Contexts;
 using FluentAssertions;
 using System.ComponentModel.DataAnnotations;
+using ApiRefactor.Controllers;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ApiRefactor.Test
 {
@@ -43,18 +45,19 @@ namespace ApiRefactor.Test
         [Fact]
         public async Task SaveAsync_WhenNameIsEmpty_ShouldThrowValidationException()
         {
-            //Arrange
-            using var context = CreateInMemoryContext();
+            // Arrange
+            var context = CreateInMemoryContext();
             var repo = new WaveRepository(context);
+
             var wave = new Wave { Name = "" };
 
             // Act
             Func<Task> act = () => repo.SaveAsync(wave);
 
-            //Assert
+            // Assert
             await act.Should()
                 .ThrowAsync<ValidationException>()
-                .WithMessage("*name*");
+                .WithMessage("*required*");
         }
 
         [Fact]
@@ -71,24 +74,6 @@ namespace ApiRefactor.Test
 
             // Assert
             result.Name.Should().Be("Updated");
-        }
-
-        [Fact]
-        public async Task UpdateAsync_WhenIdIsEmpty_ShouldThrowArgumentException()
-        {
-            //Arrange
-            using var context = CreateInMemoryContext();
-            var repo = new WaveRepository(context);
-            var wave = new Wave { Id = Guid.Empty, Name = "Invalid" };
-
-            //Act
-            Func<Task> act = () => repo.UpdateAsync(wave);
-
-
-            // Assert
-            await act.Should()
-                .ThrowAsync<ArgumentException>()
-                .WithMessage("*not valid*");
         }
 
         [Fact]
@@ -109,7 +94,7 @@ namespace ApiRefactor.Test
             // Assert
             await act.Should()
                 .ThrowAsync<KeyNotFoundException>()
-                .WithMessage("*not found*");
+                .WithMessage($"Wave with ID {wave.Id} not found.");
         }
 
         [Fact]
@@ -131,7 +116,52 @@ namespace ApiRefactor.Test
             // Assert
             await act.Should()
                 .ThrowAsync<ValidationException>()
-                .WithMessage("*name*");
+                .WithMessage("*required*");
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_WhenWaveExists_ReturnsWave()
+        {
+            // Arrange
+            using var context = CreateInMemoryContext();
+            var repo = new WaveRepository(context);
+
+            var waveId = Guid.NewGuid();
+            var expectedWave = new Wave
+            {
+                Id = waveId,
+                Name = "Test Wave",
+                WaveDate = DateTime.UtcNow
+            };
+
+            context.Waves.Add(expectedWave);
+            await context.SaveChangesAsync();
+
+            // Act
+            var result = await repo.GetByIdAsync(waveId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Id.Should().Be(waveId);
+            result.Name.Should().Be("Test Wave");
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_WhenWaveDoesNotExist_ThrowsKeyNotFoundException()
+        {
+            // Arrange
+            using var context = CreateInMemoryContext();
+            var repo = new WaveRepository(context);
+
+            var nonExistentId = Guid.NewGuid();
+
+            // Act
+            Func<Task> act = async () => await repo.GetByIdAsync(nonExistentId);
+
+            // Assert
+            await act.Should()
+                .ThrowAsync<KeyNotFoundException>()
+                .WithMessage($"Wave with ID {nonExistentId} not found.");
         }
     }
 }

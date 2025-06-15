@@ -1,6 +1,7 @@
 ﻿using ApiRefactor.Models;
 using ApiRefactor.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace ApiRefactor.Controllers
 {
@@ -26,8 +27,6 @@ namespace ApiRefactor.Controllers
         public async Task<ActionResult<Wave>> GetById(Guid id)
         {
             var wave = await _repository.GetByIdAsync(id);
-            if (wave == null)
-                return NotFound();
 
             return Ok(wave);
         }
@@ -35,7 +34,6 @@ namespace ApiRefactor.Controllers
         [HttpPost]
         public async Task<ActionResult<Wave>> Save([FromBody] CreateWave wave)
         {
-
             var newWave = new Wave
             {
                 Name = wave.Name,
@@ -43,8 +41,8 @@ namespace ApiRefactor.Controllers
 
             var result = await _repository.SaveAsync(newWave);
 
-            return Ok(result);
-
+            return Ok(result);          
+           
         }
 
         [HttpPut]
@@ -56,10 +54,10 @@ namespace ApiRefactor.Controllers
                Name = wave.Name,
                WaveDate = DateTime.Now
            };
+            
+            var result = await _repository.UpdateAsync(updateWave);
 
-            await _repository.UpdateAsync(updateWave);
-
-            return Ok(updateWave);
+            return Ok(result);
         }
     }
 }

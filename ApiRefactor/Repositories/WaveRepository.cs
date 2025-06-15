@@ -1,9 +1,9 @@
-﻿using ApiRefactor.Common;
-using ApiRefactor.Data.Contexts;
+﻿using ApiRefactor.Data.Contexts;
 using ApiRefactor.Models;
 using ApiRefactor.Repositories.Interfaces;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace ApiRefactor.Repositories
 {
@@ -23,7 +23,12 @@ namespace ApiRefactor.Repositories
 
         public async Task<Wave?> GetByIdAsync(Guid id)
         {
-            return await _repositoryContext.Waves.FindAsync(id);
+            var wave = await _repositoryContext.Waves.FindAsync(id);
+
+            if (wave == null)
+                throw new KeyNotFoundException($"Wave with ID {id} not found.");
+
+            return wave;
         }
 
         public async Task<Wave> SaveAsync(Wave wave)
@@ -50,9 +55,9 @@ namespace ApiRefactor.Repositories
 
         private async Task<Wave> ValidateRequestData(Wave wave)
         {
-            if (wave == null || string.IsNullOrEmpty(wave.Name))
+            if (wave == null || string.IsNullOrWhiteSpace(wave.Name))
             {
-                throw new System.ComponentModel.DataAnnotations.ValidationException(ConstantStrings.NAME_INVALID);
+                throw new ValidationException("The Name field is required.");
             }
 
             if (wave.Id == Guid.Empty)

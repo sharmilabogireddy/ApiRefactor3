@@ -14,6 +14,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.ConfigureRepositoryManager(config);
 
 var app = builder.Build();
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
